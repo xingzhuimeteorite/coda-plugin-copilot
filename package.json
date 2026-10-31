@@ -1,0 +1,51 @@
+{
+  "name": "coda-local-copilot",
+  "id": "copilot",
+  "displayName": "GitHub Copilot",
+  "description": "通过原生 ACP 接入 GitHub Copilot CLI，支持 Copilot autopilot 自主模式；资源页显示 Copilot 账号的 AI Credits 额度。",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "categories": [
+    "Agent"
+  ],
+  "contributes": {
+    "agents": [
+      {
+        "id": "copilot",
+        "displayName": "GitHub Copilot",
+        "icon": {
+          "light": "icons/copilot-light.pdf",
+          "dark": "icons/copilot-dark.pdf"
+        },
+        "command": "exec \"$CODA_NODE\" \"$CODA_PLUGIN_PATH/agent/entry.mjs\"",
+        "modes": {
+          "title": "审批模式",
+          "unset": "人工审批",
+          "auto": "https://agentclientprotocol.com/protocol/session-modes#autopilot",
+          "full": "https://agentclientprotocol.com/protocol/session-modes#autopilot",
+          "note": "autopilot 是 Copilot 的实验性自主模式，启用 allow-all 并持续运行至任务完成。"
+        },
+        "skillsDir": ".agents/skills",
+        "configFiles": [
+          "${COPILOT_HOME:-~/.copilot}/settings.json",
+          ".github/copilot/settings.json",
+          ".github/copilot/settings.local.json"
+        ],
+        "setupHint": "setup 自动准备 CLI；首次使用请在运行机执行 copilot login，或用插件状态目录 cli/node_modules/.bin/copilot login。"
+      }
+    ],
+    "panels": [
+      {
+        "id": "quota",
+        "title": "GitHub Copilot",
+        "command": "exec \"$CODA_NODE\" \"$CODA_PLUGIN_PATH/scripts/panel.mjs\"",
+        "maxAge": "PT5M"
+      }
+    ],
+    "setup": {
+      "command": "exec \"$CODA_NODE\" \"$CODA_PLUGIN_PATH/scripts/setup.mjs\""
+    }
+  },
+  "license": "MIT"
+}

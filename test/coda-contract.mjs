@@ -1,0 +1,30 @@
+// Read-only checks against an installed Coda runtime. Never installs this plugin or opens a Coda session.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+assert(process.env.CODA_RUNTIME, 'Set CODA_RUNTIME to the installed backend release directory');
+const runtime = process.env.CODA_RUNTIME;
+const fromRuntime = path => import(pathToFileURL(join(runtime, path)).href);
+const { manifestProblem } = await fromRuntime('node_modules/@coda-console/protocol/validate.mjs');
+const { readPlugin } = await fromRuntime('src/components/plugins/plugin-rules.mjs');
+const { delegateMode } = await fromRuntime('src/components/plugins/agents.mjs');
+const root = process.argv[2] ? resolve(process.argv[2]) : fileURLToPath(new URL('../', import.meta.url));
+const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+assert.equal(manifestProblem(manifest, root), null);
+const plugin = readPlugin(root, { kind: 'git', repo: root, ref: 'main' });
+const copilot = plugin.agents[0];
+const autopilot = 'https://agentclientprotocol.com/protocol/session-modes#autopilot';
+assert.equal(copilot.modes.auto, autopilot);
+assert.equal(copilot.modes.full, autopilot);
+const modes = id => id === 'copilot' ? copilot.modes : id === 'example' ? { auto: 'auto', full: 'full' } : {};
+const parent = (agent, mode) => ({ agent, settings: { mode } });
+assert.equal(delegateMode(parent('copilot', autopilot), 'example', modes), 'auto');
+assert.equal(delegateMode(parent('copilot', autopilot), 'copilot', modes), autopilot);
+assert.equal(delegateMode(parent('example', 'auto'), 'copilot', modes), autopilot);
+assert.equal(delegateMode(parent('example', 'full'), 'copilot', modes), autopilot);
+assert.equal(delegateMode(parent('copilot', 'https://agentclientprotocol.com/protocol/session-modes#agent'), 'example', modes), undefined);
+assert.throws(() => delegateMode(parent('copilot', autopilot), 'example', modes, 'full'), /子会话至多用自动档/);
+assert.throws(() => delegateMode(parent('example', undefined), 'copilot', modes, autopilot), /父会话的操作要你批准/);
+console.log('PASS: current runtime manifestProblem + readPlugin; auto/full may match; 7 delegation cases');
